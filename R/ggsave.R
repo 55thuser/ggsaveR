@@ -6,7 +6,8 @@
 #' @importFrom ragg agg_png
 #' @importFrom png writePNG
 #' @importFrom base64enc base64encode
-#' @importFrom utils packageVersion
+#' @importFrom utils packageVersion sessionInfo
+#' @importFrom grDevices dev.cur dev.off
 
 # You will need to add ragg, png, and base64enc to your DESCRIPTION file:
 # Imports:
@@ -85,7 +86,6 @@ save_png_with_data <- function(filename, plot, plot_call_str, creator, embed_dat
     width = ggsave_args$width %||% 7,
     height = ggsave_args$height %||% 7,
     units = ggsave_args$units %||% "in",
-    dpi = ggsave_args$dpi %||% 300,
     background = ggsave_args$bg %||% "white",
     res = ggsave_args$dpi %||% 300 # ragg uses `res` for dpi
   )
@@ -126,8 +126,38 @@ save_png_with_data <- function(filename, plot, plot_call_str, creator, embed_dat
 
 
 # --- Your main ggsave function ---
-# This remains almost identical, but now calls the working helper.
-# I've modified the `save_png_with_data` call to pass `embed_data`.
+
+#' Save a ggplot (or other grid object) with ggsaveR enhancements.
+#'
+#' `ggsave()` is a convenient function for saving a plot. It defaults to
+#' saving the last plot that you displayed, and it uses the file extension to
+#' figure out which graphics device to use. `ggsaveR` extends this behavior
+#' with several new features controlled by R options, such as saving to
+#' multiple formats at once, embedding reproducibility data in PNGs, and
+#' advanced file overwrite controls.
+#'
+#' @section ggsaveR Enhancements:
+#' \itemize{
+#'   \item **Multiple Formats**: Set the `ggsaveR.formats` option to a list of
+#'     output configurations to save to multiple files at once (e.g., PNG, PDF,
+#'     and SVG).
+#'   \item **Data Embedding**: Set `ggsaveR.embed_data = TRUE` to embed the
+#'     plot object, data, session info, and the generating call into the PNG
+#'     file. This data can be retrieved with `read_ggsaveR_data()`.
+#'   \item **Overwrite Control**: Set the `ggsaveR.overwrite_action` option to
+#'     `"overwrite"` (default), `"stop"` (to error if the file exists), or
+#'     `"unique"` (to save to a new file like `plot-1.png`).
+#'   \item **Creator Metadata**: Set the `ggsaveR.creator` option to add an
+#'     author/creator field to the file's metadata.
+#' }
+#'
+#' @param filename File name to create on disk.
+#' @param plot Plot to save, defaults to the last plot displayed.
+#' @param device Device to use. See \code{\link[ggplot2]{ggsave}} for details. When using the `ggsaveR.formats` option, this argument is ignored.
+#' @param guard A logical flag. If `TRUE`, `ggsaveR`'s enhancements are
+#'   bypassed, and the call is forwarded directly to `ggplot2::ggsave()`.
+#' @param ... Other arguments passed on to the graphics device function, such as `width`, `height`, `units`, or `dpi`.
+#' @return Invisibly returns a character vector of the file paths created.
 #' @export
 ggsave <- function(filename, plot = last_plot(), device = NULL, ..., guard = FALSE) {
 
@@ -159,7 +189,7 @@ ggsave <- function(filename, plot = last_plot(), device = NULL, ..., guard = FAL
   filter_ggplot2_args <- function(args) {
     # List of arguments that are specific to ggsaveR and shouldn't be passed to ggplot2::ggsave
     # Also filter out arguments that we explicitly pass to avoid conflicts
-    ggsaveR_args <- c("embed_data", "creator", "author", "guard", "device", "filename", "plot")
+    ggsaveR_args <- c("embed_data", "creator", "guard", "device", "filename", "plot")
     args[!names(args) %in% ggsaveR_args]
   }
 
