@@ -1,0 +1,23 @@
+Package: ggsaveR
+Title: A Wrapper for 'ggplot2::ggsave' with Extra Features
+Version: 0.1.0
+Authors@R: 
+    person("Anders Hagen", "Jarmund", , "anders.h.jarmund@ntnu.no", role = c("aut", "cre"))
+Description: Extends the functionality of 'ggplot2::ggsave()' to allow for 
+    saving plots to multiple formats at once, embedding plot data within PNG 
+    files for reproducibility, and automatically generating unique filenames 
+    to prevent overwriting existing files.
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+URL: https://andjar.github.io/ggsaveR/
+Imports: ggplot2, png (>= 0.1-8), base64enc, tools, ragg, rlang,
+        svglite
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown, withr
+Config/testthat/edition: 3
+NeedsCompilation: no
+Packaged: 2025-08-06 17:38:08 UTC; anderhja
+Author: Anders Hagen Jarmund [aut, cre]
+Maintainer: Anders Hagen Jarmund <anders.h.jarmund@ntnu.no>
+Built: R 4.4.3; ; 2025-08-06 17:39:33 UTC; windows

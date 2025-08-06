@@ -1,0 +1,4 @@
+ggsave                  Save a ggplot (or other grid object) with
+                        ggsaveR enhancements.
+read_ggsaveR_data       Read embedded reproducibility data from a
+                        ggsaveR-generated file
