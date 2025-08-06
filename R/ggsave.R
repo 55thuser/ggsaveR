@@ -39,9 +39,9 @@ save_png_with_data <- function(filename, plot, plot_call_str, creator, embed_dat
   if (isTRUE(embed_data)) {
     # Get options for what to embed
     embed_opts <- getOption("ggsaveR.embed_metadata", c("plot", "data", "session_info", "call"))
-    
+
     repro_data <- list()
-    
+
     if ("plot" %in% embed_opts) {
       repro_data$plot_object <- plot
     }
@@ -54,7 +54,7 @@ save_png_with_data <- function(filename, plot, plot_call_str, creator, embed_dat
     if ("call" %in% embed_opts) {
       repro_data$plot_call <- plot_call_str
     }
-    
+
     # Add version info only if we have other data to embed
     if (length(repro_data) > 0) {
       # Create a new list with ggsaveR_version first to match test expectations
@@ -76,10 +76,10 @@ save_png_with_data <- function(filename, plot, plot_call_str, creator, embed_dat
   # --- 2. Render the plot to a raster array in memory ---
   # We pass ggsave args like width, height, dpi, etc., to ragg::agg_png.
   ggsave_args <- list(...)
-  
+
   # Use a temporary file for ragg rendering since it doesn't support direct memory output
   tmp_ragg_file <- tempfile(fileext = ".png")
-  
+
   render_args <- list(
     filename = tmp_ragg_file,
     width = ggsave_args$width %||% 7,
@@ -102,7 +102,7 @@ save_png_with_data <- function(filename, plot, plot_call_str, creator, embed_dat
     )
     print(plot)
     dev.off()
-    
+
     # Read the temporary file and clean up
     raster_data <- png::readPNG(tmp_ragg_file)
     unlink(tmp_ragg_file)
@@ -132,40 +132,15 @@ save_png_with_data <- function(filename, plot, plot_call_str, creator, embed_dat
 ggsave <- function(filename, plot = last_plot(), device = NULL, ..., guard = FALSE) {
 
   if (isTRUE(guard)) {
-    # Create a clean call to ggplot2::ggsave without ggsaveR-specific arguments
+    # Get the original call as a list of arguments
     call <- match.call()
+    # Change the function to be called to ggplot2's ggsave
+    call[[1L]] <- quote(ggplot2::ggsave)
+    # Remove the 'guard' argument so it is not passed to ggplot2::ggsave
     call$guard <- NULL
-    call[[1]] <- quote(ggplot2::ggsave)
-    
-    # Remove any ggsaveR-specific arguments from the dots
-    dots <- list(...)
-    ggsaveR_args <- c("embed_data", "creator", "author", "guard")
-    for (arg in ggsaveR_args) {
-      if (arg %in% names(dots)) {
-        call[[arg]] <- NULL
-      }
-    }
-    
-    # Create a new call with only the arguments that ggplot2::ggsave accepts
-    clean_call <- call("ggsave")
-    clean_call$filename <- call$filename
-    clean_call$plot <- call$plot
-    if (!is.null(call$device)) clean_call$device <- call$device
-    
-    # Add any remaining arguments that are not ggsaveR-specific
-    for (i in seq_along(call)) {
-      arg_name <- names(call)[i]
-      if (!is.null(arg_name) && !arg_name %in% c("", "filename", "plot", "device", ggsaveR_args)) {
-        clean_call[[arg_name]] <- call[[i]]
-      }
-    }
-    
-    # Use the actual ggplot2::ggsave function
-    return(do.call(ggplot2::ggsave, as.list(clean_call)[-1]))
-    
-
-    
-    return(eval.parent(clean_call))
+    # Evaluate the modified call in the parent environment, where the
+    # arguments (e.g., plot objects, filenames) are defined.
+    return(eval.parent(call))
   }
 
   plot_arg <- substitute(plot)
@@ -180,15 +155,15 @@ ggsave <- function(filename, plot = last_plot(), device = NULL, ..., guard = FAL
   saved_files <- character()
   base_filename <- tools::file_path_sans_ext(filename)
 
-# Filter out arguments that shouldn't be passed to ggplot2::ggsave
-filter_ggplot2_args <- function(args) {
-  # List of arguments that are specific to ggsaveR and shouldn't be passed to ggplot2::ggsave
-  # Also filter out arguments that we explicitly pass to avoid conflicts
-  ggsaveR_args <- c("embed_data", "creator", "author", "guard", "device", "filename", "plot")
-  args[!names(args) %in% ggsaveR_args]
-}
+  # Filter out arguments that shouldn't be passed to ggplot2::ggsave
+  filter_ggplot2_args <- function(args) {
+    # List of arguments that are specific to ggsaveR and shouldn't be passed to ggplot2::ggsave
+    # Also filter out arguments that we explicitly pass to avoid conflicts
+    ggsaveR_args <- c("embed_data", "creator", "author", "guard", "device", "filename", "plot")
+    args[!names(args) %in% ggsaveR_args]
+  }
 
-# Function to handle a single save operation
+  # Function to handle a single save operation
   # This avoids code duplication between the two main branches
   process_single_save <- function(dev, current_filename, args) {
 
