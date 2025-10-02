@@ -22,9 +22,15 @@
 #'   if the `device` argument is a vector (e.g., `filename = "myplot"` with
 #'   `device = c("png", "pdf")` will create `myplot.png` and `myplot.pdf`).
 #' @param plot Plot to save, defaults to the last plot displayed.
-#' @param device Device to use. Can be a character vector of multiple devices,
-#'   e.g., `c("png", "pdf", "svg")`.
-#' @param ... Other arguments passed on to [ggplot2::ggsave()].
+#' @param device Device to use. Can be either:
+#'   - A character vector of multiple devices, e.g., `c("png", "pdf", "svg")`.
+#'   - A list of format specifications with dimensions, e.g., 
+#'     `list(list(filetype = "png", width = 180, height = 120, units = "mm"),
+#'           list(filetype = "pdf", width = 90, height = 120, units = "mm"))`.
+#'   - A single device name as character.
+#' @param ... Other arguments passed on to [ggplot2::ggsave()]. Note that
+#'   width, height, and units specified in ... will be overridden by 
+#'   format-specific specifications when using the list format for device.
 #'
 #' @return Invisibly returns a vector of the saved file paths.
 #' @export
@@ -39,6 +45,17 @@
 #' # Creates plot.png and plot.pdf in a temporary directory
 #' f <- tempfile(pattern = "plot")
 #' ggsave(filename = f, plot = p, device = c("png", "pdf"))
+#'
+#' # --- Example 1b: Save with multiple dimensions ---
+#' # Creates plot_180x120.png, plot_90x120.png, plot_180x120.pdf, etc.
+#' f2 <- tempfile(pattern = "plot")
+#' figure_formats <- list(
+#'   list(filetype = "png", width = 180, height = 120, units = "mm"),
+#'   list(filetype = "png", width = 90, height = 120, units = "mm"),
+#'   list(filetype = "pdf", width = 180, height = 120, units = "mm"),
+#'   list(filetype = "jpg", width = 90, height = 120, units = "mm")
+#' )
+#' ggsave(filename = f2, plot = p, device = figure_formats)
 #'
 #' # --- Example 2: Avoid overwriting ---
 #' options(ggsaveR.overwrite_action = "unique")
@@ -110,27 +127,25 @@ ggsave <- function(filename, plot = last_plot(), device = NULL, ...) {
     ggsave_args$author <- creator
   }
 
-  # --- 2. Handle multiple devices ---
-  # If device is not specified, infer from filename extension
-  if (is.null(device)) {
-    device <- tolower(tools::file_ext(filename))
-    if (device == "") {
-      stop("Cannot determine device from filename with no extension.", call. = FALSE)
-    }
-  }
+  # --- 2. Handle multiple devices and formats ---
+  # Parse device specification (vector, list, or single device)
+  format_specs <- parse_device_specification(device, filename)
+  
+  saved_files <- character(length(format_specs))
 
-  devices <- device
-
-  # Base filename without extension
-  base_filename <- tools::file_path_sans_ext(filename)
-
-  saved_files <- character(length(devices))
-
-  for (i in seq_along(devices)) {
-    dev <- devices[i]
-
-    # Construct the full filename for this device
-    current_filename <- paste0(base_filename, ".", dev)
+  for (i in seq_along(format_specs)) {
+    spec <- format_specs[[i]]
+    dev <- spec$device
+    current_filename <- spec$filename
+    
+    # Prepare arguments specific to this format specification
+    current_args <- ggsave_args
+    
+    # Override with format-specific dimensions if provided
+    if (!is.null(spec$width)) current_args$width <- spec$width
+    if (!is.null(spec$height)) current_args$height <- spec$height
+    if (!is.null(spec$units)) current_args$units <- spec$units
+    if (!is.null(spec$dpi)) current_args$dpi <- spec$dpi
 
     # --- 3. Handle file overwriting ---
     if (file.exists(current_filename)) {
@@ -151,14 +166,14 @@ ggsave <- function(filename, plot = last_plot(), device = NULL, ...) {
         save_png_with_data,
         c(list(filename = current_filename, plot = plot,
                plot_call_str = plot_call_str, creator = creator),
-          ggsave_args)
+          current_args)
       )
     } else {
       # Use the original ggsave for all other cases
       do.call(
         ggplot2::ggsave,
         c(list(filename = current_filename, plot = plot, device = dev),
-          ggsave_args)
+          current_args)
       )
     }
 
